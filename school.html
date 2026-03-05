@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>منصة القائدة غادة سعود خشيم - نظام استيراد الملفات</title>
+    <style>
+        :root { --main: #2c3e50; --accent: #8e44ad; --success: #27ae60; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; direction: rtl; }
+        .login-overlay { position: fixed; inset: 0; background: var(--main); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-card { background: white; padding: 40px; border-radius: 15px; width: 350px; text-align: center; }
+        header { background: var(--main); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1100px; margin: 20px auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-right: 5px solid var(--accent); }
+        .full-width { grid-column: 1 / -1; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; }
+        button { background: var(--accent); color: white; border: none; cursor: pointer; font-weight: bold; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .download-btn { background: var(--success); color: white; padding: 4px 10px; text-decoration: none; border-radius: 5px; font-size: 12px; }
+        input[type="file"] { background: #f0f0f0; border: 1px dashed #ccc; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+        <h2>🏫 نظام الإدارة المدرسية</h2>
+        <input type="text" id="userInp" placeholder="اسم المستخدم">
+        <input type="password" id="passInp" placeholder="كلمة المرور">
+        <button onclick="auth.login()">دخول آمن</button>
+        <p style="font-size: 11px; color: #777;">غادة سعود خشيم | 8501</p>
+    </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+    <header>
+        <div><strong>المتصفح المدرسي</strong> | مرحباً: <span id="currentUserDisp"></span></div>
+        <button onclick="location.reload()" style="width:auto; background:#c0392b;">خروج</button>
+    </header>
+
+    <div class="container">
+        <div class="card full-width" style="border-right-color: orange;">
+            <h3>🌍 الملفات المشتركة (للجميع)</h3>
+            <div id="sharedList"></div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="file" id="sharedFileBox">
+                <button onclick="files.upload('shared', 'sharedFileBox')" style="width:150px; background:orange">نشر للكل</button>
+            </div>
+        </div>
+
+        <div id="adminPanel" style="display:none; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card" style="background:#fff5f5;">
+                <h3>👥 إدارة المعلمين</h3>
+                <input type="text" id="newTUser" placeholder="اسم المعلم">
+                <input type="text" id="newTPass" placeholder="كلمة المرور">
+                <button onclick="admin.addTeacher()">إنشاء حساب</button>
+                <div id="teachersList"></div>
+            </div>
+
+            <div class="card">
+                <h3>📤 إرسال ملف خاص لمعلم</h3>
+                <select id="targetTeacherSelect"></select>
+                <input type="file" id="adminToTeacherFileBox">
+                <button onclick="files.upload('toTeacher', 'adminToTeacherFileBox')">إرسال الآن</button>
+            </div>
+
+            <div class="card full-width">
+                <h3>📥 ملفات واصلة من المعلمين</h3>
+                <div id="incomingToAdmin"></div>
+            </div>
+        </div>
+
+        <div id="teacherPanel" style="display:none;" class="full-width">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div class="card">
+                    <h3>📩 ملفات من الإدارة لك</h3>
+                    <div id="teacherPrivateFiles"></div>
+                </div>
+                <div class="card">
+                    <h3>📤 رفع تقرير للمديرة</h3>
+                    <input type="file" id="toAdminFileBox">
+                    <button onclick="files.upload('toAdmin', 'toAdminFileBox')" style="background:var(--success)">إرسال للمديرة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const db = {
+        get: (k) => JSON.parse(localStorage.getItem(k) || '[]'),
+        save: (k, d) => localStorage.setItem(k, JSON.stringify(d))
+    };
+
+    const auth = {
+        admin: { user: 'غادة سعود خشيم', pass: '8501' },
+        login() {
+            const u = document.getElementById('userInp').value;
+            const p = document.getElementById('passInp').value;
+            if(u === this.admin.user && p === this.admin.pass) return this.start('admin', u);
+            const t = db.get('teachers').find(x => x.user === u && x.pass === p);
+            if(t) return this.start('teacher', t.user);
+            alert('خطأ!');
+        },
+        start(role, name) {
+            window.currentUser = { role, name };
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('currentUserDisp').innerText = name;
+            if(role === 'admin') { document.getElementById('adminPanel').style.display = 'grid'; admin.render(); }
+            else { document.getElementById('teacherPanel').style.display = 'block'; }
+            files.render();
+        }
+    };
+
+    const admin = {
+        addTeacher() {
+            const user = document.getElementById('newTUser').value;
+            const pass = document.getElementById('newTPass').value;
+            if(!user || !pass) return;
+            let ts = db.get('teachers'); ts.push({ user, pass }); db.save('teachers', ts);
+            this.render();
+        },
+        render() {
+            const list = document.getElementById('teachersList');
+            const select = document.getElementById('targetTeacherSelect');
+            const ts = db.get('teachers');
+            list.innerHTML = ''; select.innerHTML = '';
+            ts.forEach((t, i) => {
+                list.innerHTML += `<div class="file-item">${t.user} <button onclick="admin.deleteT(${i})" style="width:auto; padding:2px 8px; background:red;">حذف</button></div>`;
+                select.innerHTML += `<option value="${t.user}">${t.user}</option>`;
+            });
+        },
+        deleteT(i) { let ts = db.get('teachers'); ts.splice(i, 1); db.save('teachers', ts); this.render(); }
+    };
+
+    const files = {
+        upload(type, boxId) {
+            const fileInput = document.getElementById(boxId);
+            const file = fileInput.files[0];
+            if(!file) return alert("الرجاء اختيار ملف أولاً");
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const fileData = e.target.result; // محتوى الملف المشفر
+                let all = db.get('school_files');
+                all.push({
+                    type, 
+                    owner: window.currentUser.name,
+                    fileName: file.name,
+                    fileContent: fileData,
+                    target: (type === 'toTeacher') ? document.getElementById('targetTeacherSelect').value : (type === 'toAdmin' ? 'admin' : 'all'),
+                    time: new Date().toLocaleTimeString('ar-SA')
+                });
+                db.save('school_files', all);
+                fileInput.value = ""; // تفريغ الخانة
+                this.render();
+                alert("تم رفع واستيراد الملف بنجاح");
+            };
+            reader.readAsDataURL(file); // قراءة الملف من الجهاز
+        },
+        render() {
+            const all = db.get('school_files');
+            const sharedDiv = document.getElementById('sharedList');
+            const teacherPriv = document.getElementById('teacherPrivateFiles');
+            const adminReports = document.getElementById('incomingToAdmin');
+
+            sharedDiv.innerHTML = ''; if(teacherPriv) teacherPriv.innerHTML = ''; adminReports.innerHTML = '';
+
+            all.forEach(f => {
+                const item = `<div class="file-item">
+                    <span>📄 ${f.fileName} <small>(${f.owner})</small></span>
+                    <a href="${f.fileContent}" download="${f.fileName}" class="download-btn">تحميل / فتح</a>
+                </div>`;
+                
+                if(f.type === 'shared') sharedDiv.innerHTML += item;
+                if(window.currentUser.role === 'admin' && f.type === 'toAdmin') adminReports.innerHTML += item;
+                if(window.currentUser.role === 'teacher' && f.target === window.currentUser.name) teacherPriv.innerHTML += item;
+            });
+        }
+    };
+</script>
+</body>
+</html>
