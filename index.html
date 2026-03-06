@@ -2,58 +2,57 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>منصة الإدارة</title>
+    <title>نظام الإدارة المدرسية</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --main: #2c3e50; --accent: #8e44ad; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; direction: rtl; text-align: right; }
+        :root { --main: #2c3e50; --accent: #8e44ad; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; direction: rtl; }
         .login-overlay { position: fixed; inset: 0; background: var(--main); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .login-card { background: white; padding: 40px; border-radius: 15px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        header { background: var(--main); color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--accent); }
-        .container { max-width: 900px; margin: 20px auto; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border-right: 5px solid var(--accent); }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; }
-        button { background: var(--accent); color: white; border: none; cursor: pointer; font-weight: bold; }
-        .file-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; background: #fafafa; margin-top: 5px; border-radius: 5px; }
+        .login-card { background: white; padding: 40px; border-radius: 15px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        input[type="text"], input[type="password"], select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        header { background: var(--main); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .container { padding: 20px; max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-right: 5px solid var(--accent); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .file-item { display: flex; justify-content: space-between; background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div id="loginOverlay" class="login-overlay">
     <div class="login-card">
-        <h2 style="color: var(--main);">🏫 تسجيل الدخول</h2>
+        <h2 style="color:var(--main)">🏫 تسجيل دخول آمن</h2>
         <input type="text" id="userInp" placeholder="اسم المستخدم">
         <input type="password" id="passInp" placeholder="كلمة المرور">
-        <button onclick="login()">دخول آمن</button>
-        </div>
+        <button onclick="login()">دخول</button>
+    </div>
 </div>
 
 <div id="mainApp" style="display:none;">
     <header>
-        <div><strong>نظام الإدارة المدرسية</strong> | مرحباً: <span id="userDisp"></span></div>
-        <button onclick="location.reload()" style="width:auto; background:#c0392b;">خروج</button>
+        <div><strong>منصة القائدة</strong> | <span id="userDisp"></span></div>
+        <button onclick="location.reload()" style="background:#c0392b; width:auto; padding:5px 15px;">خروج</button>
     </header>
     <div class="container">
         <div id="adminPanel" style="display:none;">
             <div class="card">
                 <h3>👥 إضافة المعلمات</h3>
                 <input type="text" id="tUser" placeholder="اسم المعلمة">
-                <input type="password" id="tPass" placeholder="تعيين كلمة مرور">
-                <button onclick="addTeacher()">إضافة معلمة للسحابة</button>
-                <div id="tList"></div>
+                <input type="password" id="tPass" placeholder="كلمة المرور">
+                <button onclick="addTeacher()">حفظ المعلمة في السحابة</button>
+                <div id="tList" style="margin-top:15px"></div>
             </div>
             <div class="card">
                 <h3>📤 إرسال ملف خاص</h3>
                 <select id="tSelect"></select>
-                <input type="text" id="fileName" placeholder="اكتبي اسم الملف أو الرابط">
-                <button onclick="sendFile()">إرسال الآن</button>
+                <input type="text" id="fileName" placeholder="اسم الملف أو الرابط">
+                <button onclick="sendFile()" style="background:#27ae60">إرسال الآن</button>
             </div>
         </div>
-
         <div id="teacherPanel" style="display:none;">
             <div class="card">
-                <h3>📩 الملفات الواصلة لكِ</h3>
+                <h3>📩 صندوق ملفاتك الخاصة</h3>
                 <div id="myFiles"></div>
             </div>
         </div>
@@ -61,8 +60,7 @@
 </div>
 
 <script>
-    // ⚠️ ضعي بياناتك الحقيقية هنا من Firebase Console
-const firebaseConfig = {
+ const firebaseConfig = {
   apiKey: "AIzaSyAxj3fQiWQTavPhov6Vpro83_8P8cXQDL8",
   authDomain: "school-dab46.firebaseapp.com",
   projectId: "school-dab46",
@@ -71,6 +69,8 @@ const firebaseConfig = {
   appId: "1:901701645217:web:d6e91d8c2e2d7e0b0bd1e0",
   measurementId: "G-TFLYRX40X5"
 };
+    };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -78,17 +78,12 @@ const firebaseConfig = {
         const u = document.getElementById('userInp').value.trim();
         const p = document.getElementById('passInp').value.trim();
         
-        // الدخول المباشر لكِ كمديرة لحل مشكلة الخطأ
         if(u === "غادة سعود خشيم" && p === "8501") {
             showUI('admin', u);
         } else {
-            // البحث عن المعلمة في السحابة
             const snap = await db.collection('teachers').where('user', '==', u).where('pass', '==', p).get();
-            if(!snap.empty) {
-                showUI('teacher', u);
-            } else {
-                alert('اسم المستخدم أو كلمة المرور غير صحيحة');
-            }
+            if(!snap.empty) showUI('teacher', u);
+            else alert('البيانات غير صحيحة');
         }
     }
 
@@ -106,14 +101,13 @@ const firebaseConfig = {
     }
 
     async function addTeacher() {
-        const user = document.getElementById('tUser').value.trim();
-        const pass = document.getElementById('tPass').value.trim();
-        if(!user || !pass) return alert("يرجى تعبئة البيانات");
+        const user = document.getElementById('tUser').value;
+        const pass = document.getElementById('tPass').value;
+        if(!user || !pass) return;
         await db.collection('teachers').add({ user, pass });
-        document.getElementById('tUser').value = "";
-        document.getElementById('tPass').value = "";
+        document.getElementById('tUser').value=''; document.getElementById('tPass').value='';
         loadTeachers();
-        alert("تمت إضافة المعلمة بنجاح");
+        alert("تمت الإضافة للسحابة بنجاح");
     }
 
     async function loadTeachers() {
@@ -130,10 +124,10 @@ const firebaseConfig = {
     async function sendFile() {
         const target = document.getElementById('tSelect').value;
         const name = document.getElementById('fileName').value;
-        if(!name) return alert("يرجى كتابة اسم الملف");
+        if(!name) return;
         await db.collection('files').add({ target, name, date: new Date().toLocaleString('ar-SA') });
-        document.getElementById('fileName').value = "";
-        alert('تم إرسال الملف للمعلمة');
+        document.getElementById('fileName').value = '';
+        alert("تم توجيه الملف بنجاح");
     }
 
     function loadTeacherFiles(me) {
@@ -141,7 +135,7 @@ const firebaseConfig = {
             const div = document.getElementById('myFiles');
             div.innerHTML = '';
             snap.forEach(doc => {
-                div.innerHTML += `<div class="file-item">📄 ${doc.data().name} <small>(${doc.data().date})</small></div>`;
+                div.innerHTML += `<div class="file-item">📄 ${doc.data().name} <small>${doc.data().date}</small></div>`;
             });
         });
     }
